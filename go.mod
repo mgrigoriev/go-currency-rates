@@ -1,4 +1,4 @@
-module go-currency-rates
+module github.com/mgrigoriev/go-currency-rates
 
 go 1.22
 

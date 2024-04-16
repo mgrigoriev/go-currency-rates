@@ -1,4 +1,4 @@
-package main
+package xmlparser
 
 import (
 	"bytes"
@@ -10,6 +10,16 @@ import (
 	"strconv"
 	"strings"
 )
+
+type XmlParser struct {
+	cbrApiUrl string
+}
+
+func New(cbrApiUrl string) *XmlParser {
+	return &XmlParser{
+		cbrApiUrl: cbrApiUrl,
+	}
+}
 
 type CbrCurrencyData struct {
 	XMLName xml.Name `xml:"ValCurs"`
@@ -26,13 +36,13 @@ type CbrCurrencyData struct {
 	} `xml:"Valute"`
 }
 
-func fetchCurrencyRates() (map[string]float64, error) {
-	cbrData, err := fetchCbrData(cbrApiUrl)
+func (p *XmlParser) FetchAndStoreCurrencyRates() (map[string]float64, error) {
+	cbrData, err := p.fetchCbrData(p.cbrApiUrl)
 	if err != nil {
 		return nil, err
 	}
 
-	rates, err := parseCbrData(cbrData)
+	rates, err := p.parseCbrData(cbrData)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +50,7 @@ func fetchCurrencyRates() (map[string]float64, error) {
 	return rates, nil
 }
 
-func fetchCbrData(url string) (*CbrCurrencyData, error) {
+func (p *XmlParser) fetchCbrData(url string) (*CbrCurrencyData, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -64,7 +74,7 @@ func fetchCbrData(url string) (*CbrCurrencyData, error) {
 	return &cbrData, nil
 }
 
-func parseCbrData(cbrData *CbrCurrencyData) (map[string]float64, error) {
+func (p *XmlParser) parseCbrData(cbrData *CbrCurrencyData) (map[string]float64, error) {
 	rates := make(map[string]float64, len(cbrData.Entries))
 
 	for _, entry := range cbrData.Entries {
