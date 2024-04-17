@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 )
 
@@ -19,8 +18,6 @@ func New(bindAddr string, ratesCache map[string]float64) *Server {
 }
 
 func (s *Server) ListenAndServe() {
-	fmt.Println("Starting HTTP server at http://" + s.bindAddr)
-
 	http.HandleFunc("/", s.rates)
 	http.ListenAndServe(s.bindAddr, nil)
 }

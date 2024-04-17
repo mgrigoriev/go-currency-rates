@@ -55,8 +55,6 @@ func (c *CbrClient) FetchAndCacheRates() error {
 		return err
 	}
 
-	fmt.Println(c.ratesCache)
-
 	return nil
 }
 
