@@ -51,12 +51,7 @@ func (s *Server) convert(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if floatValue, ok := val.(float64); ok {
-		roundedResult = strconv.FormatFloat(amountRub/floatValue, 'f', 2, 64)
-	} else {
-		http.Error(w, "Invalid rate value", http.StatusInternalServerError)
-		return
-	}
+	roundedResult = strconv.FormatFloat(amountRub/val, 'f', 2, 64)
 
 	response := map[string]interface{}{
 		"amount_rub": amountRub,

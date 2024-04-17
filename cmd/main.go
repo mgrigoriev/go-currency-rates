@@ -12,11 +12,9 @@ import (
 const cbrApiUrl = "https://www.cbr-xml-daily.ru/daily.xml"
 const bindAddr = "0.0.0.0:9999"
 
-var ratesCache = make(map[string]float64)
-
 func main() {
 	opts := &slog.HandlerOptions{
-		AddSource: true,
+		AddSource: false,
 		Level:     slog.LevelDebug,
 	}
 
@@ -31,7 +29,7 @@ func main() {
 			logger.Error(err.Error())
 		}
 
-		logger.Info(fmt.Sprintf("Cached rates: %#v", ratesCache))
+		logger.Info(fmt.Sprintf("Fetched and cached rates: %v", ratesCache))
 	}()
 
 	logger.Info("Starting HTTP server at http://" + bindAddr)
