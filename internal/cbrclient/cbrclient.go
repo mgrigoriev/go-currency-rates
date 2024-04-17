@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type CbrClient struct {
@@ -60,9 +61,11 @@ func (c *CbrClient) FetchAndCacheRates() error {
 }
 
 func (c *CbrClient) fetchRates(url string) ([]byte, error) {
-	resp, err := http.Get(url)
+	httpClient := http.Client{Timeout: 3 * time.Second}
+
+	resp, err := httpClient.Get(url)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error fetching data: %v", err)
 	}
 	defer resp.Body.Close()
 
