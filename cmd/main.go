@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
+	"github.com/mgrigoriev/go-currency-rates/internal/cache"
 	"github.com/mgrigoriev/go-currency-rates/internal/cbrclient"
 	"github.com/mgrigoriev/go-currency-rates/internal/server"
 	"log/slog"
 	"os"
-	"time"
 )
 
 const cbrApiUrl = "https://www.cbr-xml-daily.ru/daily.xml"
@@ -22,11 +22,11 @@ func main() {
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, opts))
 
+	ratesCache := cache.New()
+
 	client := cbrclient.New(cbrApiUrl, ratesCache)
 
 	go func() {
-		time.Sleep(5 * time.Second)
-
 		if err := client.FetchAndCacheRates(); err != nil {
 			logger.Error(err.Error())
 		}

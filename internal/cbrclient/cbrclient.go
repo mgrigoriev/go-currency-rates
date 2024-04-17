@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/xml"
 	"fmt"
+	"github.com/mgrigoriev/go-currency-rates/internal/cache"
 	"golang.org/x/net/html/charset"
 	"io"
 	"net/http"
@@ -14,10 +15,10 @@ import (
 
 type CbrClient struct {
 	cbrApiUrl  string
-	ratesCache map[string]float64
+	ratesCache *cache.Cache
 }
 
-func New(cbrApiUrl string, ratesCache map[string]float64) *CbrClient {
+func New(cbrApiUrl string, ratesCache *cache.Cache) *CbrClient {
 	return &CbrClient{
 		cbrApiUrl:  cbrApiUrl,
 		ratesCache: ratesCache,
@@ -91,7 +92,7 @@ func (c *CbrClient) unmarshalRates(data []byte) (*CbrData, error) {
 func (c *CbrClient) cacheRates(cbrData *CbrData) error {
 	for _, entry := range cbrData.Entries {
 		rate := c.normalizeRate(entry.VunitRate)
-		c.ratesCache[entry.CharCode] = rate
+		c.ratesCache.Set(entry.CharCode, rate)
 	}
 
 	return nil
