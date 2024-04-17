@@ -1,23 +1,27 @@
 package main
 
 import (
-	"fmt"
+	"github.com/mgrigoriev/go-currency-rates/internal/cbrclient"
 	"github.com/mgrigoriev/go-currency-rates/internal/server"
-	"github.com/mgrigoriev/go-currency-rates/internal/xmlparser"
+	"time"
 )
 
-const cbrApi = "https://www.cbr-xml-daily.ru/daily.xml"
+const cbrApiUrl = "https://www.cbr-xml-daily.ru/daily.xml"
 const bindAddr = "0.0.0.0:9999"
 
+var ratesCache = make(map[string]float64)
+
 func main() {
-	prs := xmlparser.New(cbrApi)
+	client := cbrclient.New(cbrApiUrl, ratesCache)
 
-	rates, err := prs.FetchAndStoreCurrencyRates()
-	if err != nil {
-		fmt.Println("error:", err)
-		return
-	}
+	go func() {
+		time.Sleep(5 * time.Second)
+		err := client.FetchAndCacheRates()
+		if err != nil {
+			return
+		}
+	}()
 
-	srv := server.New(bindAddr, rates)
+	srv := server.New(bindAddr, ratesCache)
 	srv.ListenAndServe()
 }

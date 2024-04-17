@@ -1,4 +1,4 @@
-package xmlparser
+package cbrclient
 
 import (
 	"bytes"
@@ -11,17 +11,19 @@ import (
 	"strings"
 )
 
-type XmlParser struct {
-	cbrApiUrl string
+type CbrClient struct {
+	cbrApiUrl  string
+	ratesCache map[string]float64
 }
 
-func New(cbrApiUrl string) *XmlParser {
-	return &XmlParser{
-		cbrApiUrl: cbrApiUrl,
+func New(cbrApiUrl string, ratesCache map[string]float64) *CbrClient {
+	return &CbrClient{
+		cbrApiUrl:  cbrApiUrl,
+		ratesCache: ratesCache,
 	}
 }
 
-type CbrCurrencyData struct {
+type CbrData struct {
 	XMLName xml.Name `xml:"ValCurs"`
 	Date    string   `xml:"Date,attr"`
 	Name    string   `xml:"name,attr"`
@@ -36,21 +38,28 @@ type CbrCurrencyData struct {
 	} `xml:"Valute"`
 }
 
-func (p *XmlParser) FetchAndStoreCurrencyRates() (map[string]float64, error) {
-	cbrData, err := p.fetchCbrData(p.cbrApiUrl)
+func (c *CbrClient) FetchAndCacheRates() error {
+	data, err := c.fetchRates(c.cbrApiUrl)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	rates, err := p.parseCbrData(cbrData)
+	cbrData, err := c.unmarshalRates(data)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return rates, nil
+	err = c.cacheRates(cbrData)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(c.ratesCache)
+
+	return nil
 }
 
-func (p *XmlParser) fetchCbrData(url string) (*CbrCurrencyData, error) {
+func (c *CbrClient) fetchRates(url string) ([]byte, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -62,11 +71,15 @@ func (p *XmlParser) fetchCbrData(url string) (*CbrCurrencyData, error) {
 		return nil, fmt.Errorf("error reading response body: %v", err)
 	}
 
+	return data, nil
+}
+
+func (c *CbrClient) unmarshalRates(data []byte) (*CbrData, error) {
+	var cbrData CbrData
+
 	xmlDecoder := xml.NewDecoder(bytes.NewReader(data))
 	xmlDecoder.CharsetReader = charset.NewReaderLabel
-
-	var cbrData CbrCurrencyData
-	err = xmlDecoder.Decode(&cbrData)
+	err := xmlDecoder.Decode(&cbrData)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding XML: %v", err)
 	}
@@ -74,19 +87,18 @@ func (p *XmlParser) fetchCbrData(url string) (*CbrCurrencyData, error) {
 	return &cbrData, nil
 }
 
-func (p *XmlParser) parseCbrData(cbrData *CbrCurrencyData) (map[string]float64, error) {
-	rates := make(map[string]float64, len(cbrData.Entries))
-
+func (c *CbrClient) cacheRates(cbrData *CbrData) error {
 	for _, entry := range cbrData.Entries {
-		rateStr := strings.ReplaceAll(entry.VunitRate, ",", ".")
-		rateFloat, err := strconv.ParseFloat(rateStr, 64)
-
-		if err != nil {
-			return nil, fmt.Errorf("error parsing currency rates: %v", err)
-		}
-
-		rates[entry.CharCode] = rateFloat
+		rate := c.normalizeRate(entry.VunitRate)
+		c.ratesCache[entry.CharCode] = rate
 	}
 
-	return rates, nil
+	return nil
+}
+
+func (c *CbrClient) normalizeRate(rate string) float64 {
+	val := strings.ReplaceAll(rate, ",", ".")
+	res, _ := strconv.ParseFloat(val, 64)
+
+	return res
 }
