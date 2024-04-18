@@ -7,6 +7,7 @@ import (
 	"github.com/mgrigoriev/go-currency-rates/internal/cache"
 	"golang.org/x/net/html/charset"
 	"io"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -16,12 +17,14 @@ import (
 type CbrClient struct {
 	cbrApiUrl  string
 	ratesCache *cache.Cache
+	logger     *slog.Logger
 }
 
-func New(cbrApiUrl string, ratesCache *cache.Cache) *CbrClient {
+func New(cbrApiUrl string, ratesCache *cache.Cache, logger *slog.Logger) *CbrClient {
 	return &CbrClient{
 		cbrApiUrl:  cbrApiUrl,
 		ratesCache: ratesCache,
+		logger:     logger,
 	}
 }
 
@@ -55,6 +58,9 @@ func (c *CbrClient) FetchAndCacheRates() error {
 	if err != nil {
 		return err
 	}
+
+	c.logger.Info("Fetched and cached currency rates")
+	c.logger.Debug(fmt.Sprintf("%v", c.ratesCache))
 
 	return nil
 }
@@ -94,6 +100,8 @@ func (c *CbrClient) cacheRates(cbrData *CbrData) error {
 		rate := c.normalizeRate(entry.VunitRate)
 		c.ratesCache.Set(entry.CharCode, rate)
 	}
+
+	c.ratesCache.Set("RUB", 1.0)
 
 	return nil
 }

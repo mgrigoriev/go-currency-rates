@@ -1,37 +1,49 @@
 package main
 
 import (
-	"fmt"
 	"github.com/mgrigoriev/go-currency-rates/internal/cache"
 	"github.com/mgrigoriev/go-currency-rates/internal/cbrclient"
 	"github.com/mgrigoriev/go-currency-rates/internal/server"
 	"log/slog"
 	"os"
+	"time"
 )
 
 const cbrApiUrl = "https://www.cbr-xml-daily.ru/daily.xml"
 const bindAddr = "0.0.0.0:9999"
 
 func main() {
-	opts := &slog.HandlerOptions{
-		AddSource: false,
-		Level:     slog.LevelDebug,
-	}
-
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, opts))
+	logger := initLogger()
 	ratesCache := cache.New()
-	client := cbrclient.New(cbrApiUrl, ratesCache)
+	client := cbrclient.New(cbrApiUrl, ratesCache, logger)
 
 	go func() {
 		if err := client.FetchAndCacheRates(); err != nil {
 			logger.Error(err.Error())
 		}
 
-		logger.Info(fmt.Sprintf("Fetched and cached rates: %v", ratesCache))
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				if err := client.FetchAndCacheRates(); err != nil {
+					logger.Error(err.Error())
+				}
+			}
+		}
 	}()
 
-	logger.Info("Starting HTTP server at http://" + bindAddr)
-
-	srv := server.New(bindAddr, ratesCache)
+	srv := server.New(bindAddr, ratesCache, logger)
 	srv.ListenAndServe()
+}
+
+func initLogger() *slog.Logger {
+	opts := &slog.HandlerOptions{
+		AddSource: false,
+		Level:     slog.LevelDebug,
+	}
+
+	return slog.New(slog.NewJSONHandler(os.Stdout, opts))
 }

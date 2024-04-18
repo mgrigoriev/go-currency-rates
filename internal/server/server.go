@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/mgrigoriev/go-currency-rates/internal/cache"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,13 +13,15 @@ import (
 
 type Server struct {
 	ratesCache *cache.Cache
+	logger     *slog.Logger
 	bindAddr   string
 	tpl        *template.Template
 }
 
-func New(bindAddr string, ratesCache *cache.Cache) *Server {
+func New(bindAddr string, ratesCache *cache.Cache, logger *slog.Logger) *Server {
 	return &Server{
 		ratesCache: ratesCache,
+		logger:     logger,
 		bindAddr:   bindAddr,
 		tpl:        template.Must(template.ParseFiles("../templates/index.html")),
 	}
@@ -30,6 +33,8 @@ func (s *Server) ListenAndServe() {
 	r.HandleFunc("/from_rub/", s.conversionHandler)
 	r.HandleFunc("/to_rub/", s.conversionHandler)
 	http.Handle("/", r)
+
+	s.logger.Info("Starting HTTP server at http://" + s.bindAddr)
 
 	http.ListenAndServe(s.bindAddr, nil)
 }
