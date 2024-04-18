@@ -2,61 +2,88 @@ package server
 
 import (
 	"encoding/json"
+	"github.com/gorilla/mux"
 	"github.com/mgrigoriev/go-currency-rates/internal/cache"
 	"net/http"
 	"strconv"
 	"strings"
+	"text/template"
 )
 
 type Server struct {
 	ratesCache *cache.Cache
 	bindAddr   string
+	tpl        *template.Template
 }
 
 func New(bindAddr string, ratesCache *cache.Cache) *Server {
 	return &Server{
 		ratesCache: ratesCache,
 		bindAddr:   bindAddr,
+		tpl:        template.Must(template.ParseFiles("../templates/index.html")),
 	}
 }
 
 func (s *Server) ListenAndServe() {
-	http.HandleFunc("/", s.convert)
+	r := mux.NewRouter()
+	r.HandleFunc("/", s.indexHandler)
+	r.HandleFunc("/from_rub/", s.conversionHandler)
+	r.HandleFunc("/to_rub/", s.conversionHandler)
+	http.Handle("/", r)
+
 	http.ListenAndServe(s.bindAddr, nil)
 }
 
-func (s *Server) convert(w http.ResponseWriter, req *http.Request) {
-	var roundedResult string
-
-	w.Header().Set("Content-Type", "application/json")
-
-	amountRubParam := req.URL.Query().Get("amount_rub")
-	convertToParam := req.URL.Query().Get("convert_to")
-
-	if amountRubParam == "" || convertToParam == "" {
-		http.Error(w, "Usage example: /?amount_rub=1000&convert_to=USD", http.StatusUnprocessableEntity)
-		return
-	}
-
-	amountRub, err := strconv.ParseFloat(amountRubParam, 64)
+func (s *Server) indexHandler(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	err := s.tpl.ExecuteTemplate(w, "index.html", nil)
 	if err != nil {
-		http.Error(w, "Invalid amount_rub value", http.StatusUnprocessableEntity)
+		panic(err)
+	}
+}
+
+func (s *Server) conversionHandler(w http.ResponseWriter, req *http.Request) {
+	var result float64
+	var fromCurrency string
+	var toCurrency string
+
+	amountParam := req.URL.Query().Get("amount")
+	currencyParam := req.URL.Query().Get("currency")
+
+	if amountParam == "" || currencyParam == "" {
+		http.Redirect(w, req, "/", http.StatusMovedPermanently)
 		return
 	}
 
-	convertTo := strings.ToUpper(convertToParam)
-	val, ok := s.ratesCache.Get(convertTo)
+	amount, err := strconv.ParseFloat(amountParam, 64)
+	if err != nil {
+		http.Error(w, "Invalid amount value", http.StatusUnprocessableEntity)
+		return
+	}
+
+	currency := strings.ToUpper(currencyParam)
+	val, ok := s.ratesCache.Get(currency)
 	if !ok {
 		http.NotFound(w, req)
 		return
 	}
 
-	roundedResult = strconv.FormatFloat(amountRub/val, 'f', 2, 64)
+	path := strings.Trim(req.URL.Path, "/")
+	if path == "from_rub" {
+		result = amount / val
+		fromCurrency = "RUB"
+		toCurrency = currency
+	} else {
+		result = amount * val
+		fromCurrency = currency
+		toCurrency = "RUB"
+	}
 
 	response := map[string]interface{}{
-		"amount_rub": amountRub,
-		"convert_to": convertTo,
-		"result":     roundedResult,
+		"amount":        amount,
+		"from_currency": fromCurrency,
+		"to_currency":   toCurrency,
+		"result":        strconv.FormatFloat(result, 'f', 2, 64),
 	}
 
 	jsonData, err := json.Marshal(response)
@@ -65,5 +92,6 @@ func (s *Server) convert(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonData)
 }

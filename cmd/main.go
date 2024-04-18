@@ -19,9 +19,7 @@ func main() {
 	}
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, opts))
-
 	ratesCache := cache.New()
-
 	client := cbrclient.New(cbrApiUrl, ratesCache)
 
 	go func() {
