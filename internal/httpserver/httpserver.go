@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/mgrigoriev/go-currency-rates/internal/cache"
+	"github.com/mgrigoriev/go-currency-rates/internal/converter"
 	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"text/template"
 )
 
@@ -36,8 +36,7 @@ func New(bindAddr string, ratesCache *cache.Cache, logger *slog.Logger) *HTTPSer
 func (s *HTTPServer) ListenAndServe() {
 	r := mux.NewRouter()
 	r.HandleFunc("/", s.indexHandler)
-	r.HandleFunc("/from_rub/", s.conversionHandler)
-	r.HandleFunc("/to_rub/", s.conversionHandler)
+	r.HandleFunc("/convert/", s.convertHandler)
 	http.Handle("/", r)
 
 	s.logger.Info("Starting HTTP httpserver at http://" + s.bindAddr)
@@ -53,41 +52,28 @@ func (s *HTTPServer) indexHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *HTTPServer) conversionHandler(w http.ResponseWriter, req *http.Request) {
+func (s *HTTPServer) convertHandler(w http.ResponseWriter, req *http.Request) {
 	var result float64
-	var fromCurrency string
-	var toCurrency string
 
 	amountParam := req.URL.Query().Get("amount")
-	currencyParam := req.URL.Query().Get("currency")
+	fromCurrency := req.URL.Query().Get("from")
+	toCurrency := req.URL.Query().Get("to")
 
-	if amountParam == "" || currencyParam == "" {
+	if amountParam == "" || fromCurrency == "" || toCurrency == "" {
 		http.Redirect(w, req, "/", http.StatusMovedPermanently)
 		return
 	}
 
 	amount, err := strconv.ParseFloat(amountParam, 64)
 	if err != nil {
-		http.Error(w, "Invalid amount value", http.StatusUnprocessableEntity)
+		http.Error(w, "Invalid amount", http.StatusUnprocessableEntity)
 		return
 	}
 
-	currency := strings.ToUpper(currencyParam)
-	val, ok := s.ratesCache.Get(currency)
-	if !ok {
-		http.NotFound(w, req)
-		return
-	}
-
-	path := strings.Trim(req.URL.Path, "/")
-	if path == "from_rub" {
-		result = amount / val
-		fromCurrency = "RUB"
-		toCurrency = currency
-	} else {
-		result = amount * val
-		fromCurrency = currency
-		toCurrency = "RUB"
+	cvt := converter.NewConverter(s.ratesCache)
+	result, err = cvt.Convert(amount, fromCurrency, toCurrency)
+	if err != nil {
+		http.Error(w, "Can't convert "+fromCurrency+" to "+toCurrency, http.StatusUnprocessableEntity)
 	}
 
 	response := map[string]interface{}{
@@ -99,7 +85,7 @@ func (s *HTTPServer) conversionHandler(w http.ResponseWriter, req *http.Request)
 
 	jsonData, err := json.Marshal(response)
 	if err != nil {
-		http.Error(w, "HTTPServer error", http.StatusInternalServerError)
+		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
 	}
 
