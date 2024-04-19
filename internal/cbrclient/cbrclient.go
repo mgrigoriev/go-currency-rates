@@ -14,21 +14,13 @@ import (
 	"time"
 )
 
-type CbrClient struct {
-	cbrApiUrl  string
+type CBRClient struct {
+	cbrURL     string
 	ratesCache *cache.Cache
 	logger     *slog.Logger
 }
 
-func New(cbrApiUrl string, ratesCache *cache.Cache, logger *slog.Logger) *CbrClient {
-	return &CbrClient{
-		cbrApiUrl:  cbrApiUrl,
-		ratesCache: ratesCache,
-		logger:     logger,
-	}
-}
-
-type CbrData struct {
+type CBRData struct {
 	XMLName xml.Name `xml:"ValCurs"`
 	Date    string   `xml:"Date,attr"`
 	Name    string   `xml:"name,attr"`
@@ -43,8 +35,16 @@ type CbrData struct {
 	} `xml:"Valute"`
 }
 
-func (c *CbrClient) FetchAndCacheRates() error {
-	data, err := c.fetchRates(c.cbrApiUrl)
+func New(cbrURL string, ratesCache *cache.Cache, logger *slog.Logger) *CBRClient {
+	return &CBRClient{
+		cbrURL:     cbrURL,
+		ratesCache: ratesCache,
+		logger:     logger,
+	}
+}
+
+func (c *CBRClient) FetchAndCacheRates() error {
+	data, err := c.fetchRates(c.cbrURL)
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ func (c *CbrClient) FetchAndCacheRates() error {
 	return nil
 }
 
-func (c *CbrClient) fetchRates(url string) ([]byte, error) {
+func (c *CBRClient) fetchRates(url string) ([]byte, error) {
 	httpClient := http.Client{Timeout: 3 * time.Second}
 
 	resp, err := httpClient.Get(url)
@@ -82,8 +82,8 @@ func (c *CbrClient) fetchRates(url string) ([]byte, error) {
 	return data, nil
 }
 
-func (c *CbrClient) unmarshalRates(data []byte) (*CbrData, error) {
-	var cbrData CbrData
+func (c *CBRClient) unmarshalRates(data []byte) (*CBRData, error) {
+	var cbrData CBRData
 
 	xmlDecoder := xml.NewDecoder(bytes.NewReader(data))
 	xmlDecoder.CharsetReader = charset.NewReaderLabel
@@ -95,7 +95,7 @@ func (c *CbrClient) unmarshalRates(data []byte) (*CbrData, error) {
 	return &cbrData, nil
 }
 
-func (c *CbrClient) cacheRates(cbrData *CbrData) error {
+func (c *CBRClient) cacheRates(cbrData *CBRData) error {
 	for _, entry := range cbrData.Entries {
 		rate := c.normalizeRate(entry.VunitRate)
 		c.ratesCache.Set(entry.CharCode, rate)
@@ -106,7 +106,7 @@ func (c *CbrClient) cacheRates(cbrData *CbrData) error {
 	return nil
 }
 
-func (c *CbrClient) normalizeRate(rate string) float64 {
+func (c *CBRClient) normalizeRate(rate string) float64 {
 	val := strings.ReplaceAll(rate, ",", ".")
 	res, _ := strconv.ParseFloat(val, 64)
 

@@ -1,4 +1,4 @@
-package server
+package httpserver
 
 import (
 	"encoding/json"
@@ -12,20 +12,20 @@ import (
 	"text/template"
 )
 
-type Server struct {
+type HTTPServer struct {
 	ratesCache *cache.Cache
 	logger     *slog.Logger
 	bindAddr   string
 	tpl        *template.Template
 }
 
-func New(bindAddr string, ratesCache *cache.Cache, logger *slog.Logger) *Server {
+func New(bindAddr string, ratesCache *cache.Cache, logger *slog.Logger) *HTTPServer {
 	templatesDir := os.Getenv("TEMPLATES_DIR")
 	if templatesDir == "" {
 		templatesDir = "../templates"
 	}
 
-	return &Server{
+	return &HTTPServer{
 		ratesCache: ratesCache,
 		logger:     logger,
 		bindAddr:   bindAddr,
@@ -33,19 +33,19 @@ func New(bindAddr string, ratesCache *cache.Cache, logger *slog.Logger) *Server 
 	}
 }
 
-func (s *Server) ListenAndServe() {
+func (s *HTTPServer) ListenAndServe() {
 	r := mux.NewRouter()
 	r.HandleFunc("/", s.indexHandler)
 	r.HandleFunc("/from_rub/", s.conversionHandler)
 	r.HandleFunc("/to_rub/", s.conversionHandler)
 	http.Handle("/", r)
 
-	s.logger.Info("Starting HTTP server at http://" + s.bindAddr)
+	s.logger.Info("Starting HTTP httpserver at http://" + s.bindAddr)
 
 	http.ListenAndServe(s.bindAddr, nil)
 }
 
-func (s *Server) indexHandler(w http.ResponseWriter, req *http.Request) {
+func (s *HTTPServer) indexHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	err := s.tpl.ExecuteTemplate(w, "index.html", nil)
 	if err != nil {
@@ -53,7 +53,7 @@ func (s *Server) indexHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *Server) conversionHandler(w http.ResponseWriter, req *http.Request) {
+func (s *HTTPServer) conversionHandler(w http.ResponseWriter, req *http.Request) {
 	var result float64
 	var fromCurrency string
 	var toCurrency string
@@ -99,7 +99,7 @@ func (s *Server) conversionHandler(w http.ResponseWriter, req *http.Request) {
 
 	jsonData, err := json.Marshal(response)
 	if err != nil {
-		http.Error(w, "Server error", http.StatusInternalServerError)
+		http.Error(w, "HTTPServer error", http.StatusInternalServerError)
 		return
 	}
 
