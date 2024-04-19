@@ -22,7 +22,7 @@ func main() {
 			logger.Error(err.Error())
 		}
 
-		ticker := time.NewTicker(time.Minute)
+		ticker := time.NewTicker(time.Hour)
 		defer ticker.Stop()
 
 		for {

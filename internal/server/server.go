@@ -6,6 +6,7 @@ import (
 	"github.com/mgrigoriev/go-currency-rates/internal/cache"
 	"log/slog"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"text/template"
@@ -19,11 +20,16 @@ type Server struct {
 }
 
 func New(bindAddr string, ratesCache *cache.Cache, logger *slog.Logger) *Server {
+	templatesDir := os.Getenv("TEMPLATES_DIR")
+	if templatesDir == "" {
+		templatesDir = "../templates"
+	}
+
 	return &Server{
 		ratesCache: ratesCache,
 		logger:     logger,
 		bindAddr:   bindAddr,
-		tpl:        template.Must(template.ParseFiles("../templates/index.html")),
+		tpl:        template.Must(template.ParseFiles(templatesDir + "/index.html")),
 	}
 }
 
