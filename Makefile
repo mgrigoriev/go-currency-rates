@@ -1,3 +1,5 @@
+test:
+	go test -v -count=1 ./...
 d:
 	$(MAKE) d-build
 	$(MAKE) d-run

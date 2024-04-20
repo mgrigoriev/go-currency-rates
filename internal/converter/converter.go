@@ -3,6 +3,7 @@ package converter
 import (
 	"fmt"
 	"github.com/mgrigoriev/go-currency-rates/internal/cache"
+	"math"
 )
 
 type Converter struct {
@@ -23,7 +24,11 @@ func (c *Converter) Convert(amount float64, fromCurrency string, toCurrency stri
 		return 0, fmt.Errorf("currency rate not found for %s", toCurrency)
 	}
 
-	result := amount * fromRate / toRate
+	result := c.round(amount * fromRate / toRate)
 
 	return result, nil
+}
+
+func (c *Converter) round(amount float64) float64 {
+	return math.Round(amount*100) / 100
 }
