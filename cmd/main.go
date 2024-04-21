@@ -4,7 +4,7 @@ import (
 	"github.com/mgrigoriev/go-currency-rates/constants"
 	"github.com/mgrigoriev/go-currency-rates/internal/cache"
 	"github.com/mgrigoriev/go-currency-rates/internal/cbrclient"
-	"github.com/mgrigoriev/go-currency-rates/internal/httpserver"
+	"github.com/mgrigoriev/go-currency-rates/internal/handler"
 	"log/slog"
 	"os"
 	"time"
@@ -12,7 +12,7 @@ import (
 
 func main() {
 	logger := initLogger()
-	ratesCache := cache.New()
+	ratesCache := initCache()
 	client := cbrclient.New(constants.CBRURL, ratesCache, logger)
 
 	go fetchAndCacheRates(client, logger)
@@ -27,6 +27,13 @@ func initLogger() *slog.Logger {
 	}
 
 	return slog.New(slog.NewJSONHandler(os.Stdout, opts))
+}
+
+func initCache() *cache.Cache {
+	ratesCache := cache.New()
+	ratesCache.Set("RUB", 1.0)
+
+	return ratesCache
 }
 
 func fetchAndCacheRates(client *cbrclient.CBRClient, logger *slog.Logger) {
@@ -48,6 +55,6 @@ func fetchAndCacheRates(client *cbrclient.CBRClient, logger *slog.Logger) {
 }
 
 func runHTTPServer(ratesCache *cache.Cache, logger *slog.Logger) {
-	srv := httpserver.New(constants.BindAddr, ratesCache, logger)
+	srv := handler.NewHTTPServer(constants.BindAddr, ratesCache, logger)
 	srv.ListenAndServe()
 }

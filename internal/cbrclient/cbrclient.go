@@ -101,8 +101,6 @@ func (c *CBRClient) cacheRates(cbrData *CBRData) error {
 		c.ratesCache.Set(entry.CharCode, rate)
 	}
 
-	c.ratesCache.Set("RUB", 1.0)
-
 	return nil
 }
 

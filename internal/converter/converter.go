@@ -19,6 +19,7 @@ func (c *Converter) Convert(amount float64, fromCurrency string, toCurrency stri
 	if !ok {
 		return 0, fmt.Errorf("currency rate not found for %s", fromCurrency)
 	}
+
 	toRate, ok := c.ratesCache.Get(toCurrency)
 	if !ok {
 		return 0, fmt.Errorf("currency rate not found for %s", toCurrency)
