@@ -1,28 +1,29 @@
 package handler
 
 import (
-	"github.com/mgrigoriev/go-currency-rates/internal/cache"
-	"log/slog"
+	"github.com/mgrigoriev/go-currency-rates/internal/testhelper"
 	"net/http"
-	"os"
+	"net/http/httptest"
 	"testing"
 )
 
 func TestListenAndServe(t *testing.T) {
-	os.Setenv("TEMPLATES_DIR", "../../templates")
+	testhelper.SetTemplatesDir("../../templates")
+	mockLogger := testhelper.InitLogger()
+	mockCache := testhelper.InitCache(map[string]float64{})
 
-	mockLogger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{}))
-	mockCache := &cache.Cache{}
+	server := NewAppServer("localhost:8080", mockCache, mockLogger)
 
-	server := NewHTTPServer("localhost:8080", mockCache, mockLogger)
-	go server.ListenAndServe()
-
-	resp, err := http.Get("http://localhost:8080/")
+	req, err := http.NewRequest("GET", "/", nil)
 	if err != nil {
-		t.Errorf("Expected no error; got %v", err)
+		t.Fatal(err)
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("Expected status code %d; got %d", http.StatusOK, resp.StatusCode)
+	recorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(server.indexHandler)
+	handler.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Errorf("Expected status code %d; got %d", http.StatusOK, recorder.Code)
 	}
 }

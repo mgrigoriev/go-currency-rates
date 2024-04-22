@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-func (s *HTTPServer) convertHandler(w http.ResponseWriter, req *http.Request) {
+func (s *AppServer) convertHandler(w http.ResponseWriter, req *http.Request) {
 	var result float64
 
 	amountParam := req.URL.Query().Get("amount")

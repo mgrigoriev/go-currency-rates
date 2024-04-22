@@ -4,26 +4,28 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mgrigoriev/go-currency-rates/internal/cache"
 	"github.com/mgrigoriev/go-currency-rates/internal/converter"
+	"log"
 	"log/slog"
 	"net/http"
 	"os"
 	"text/template"
+	"time"
 )
 
-type HTTPServer struct {
+type AppServer struct {
 	converter *converter.Converter
 	logger    *slog.Logger
 	bindAddr  string
 	tpl       *template.Template
 }
 
-func NewHTTPServer(bindAddr string, ratesCache *cache.Cache, logger *slog.Logger) *HTTPServer {
+func NewAppServer(bindAddr string, ratesCache *cache.Cache, logger *slog.Logger) *AppServer {
 	templatesDir := os.Getenv("TEMPLATES_DIR")
 	if templatesDir == "" {
 		templatesDir = "../templates"
 	}
 
-	return &HTTPServer{
+	return &AppServer{
 		converter: converter.NewConverter(ratesCache),
 		logger:    logger,
 		bindAddr:  bindAddr,
@@ -31,13 +33,19 @@ func NewHTTPServer(bindAddr string, ratesCache *cache.Cache, logger *slog.Logger
 	}
 }
 
-func (s *HTTPServer) ListenAndServe() {
+func (s *AppServer) ListenAndServe() {
 	r := mux.NewRouter()
-	r.HandleFunc("/", s.indexHandler)
-	r.HandleFunc("/convert/", s.convertHandler)
-	http.Handle("/", r)
+	r.HandleFunc("/", s.indexHandler).Methods("GET")
+	r.HandleFunc("/convert/", s.convertHandler).Methods("GET")
+
+	srv := &http.Server{
+		Handler:      r,
+		Addr:         s.bindAddr,
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
+	}
 
 	s.logger.Info("Starting HTTP handler at http://" + s.bindAddr)
 
-	http.ListenAndServe(s.bindAddr, nil)
+	log.Fatal(srv.ListenAndServe())
 }

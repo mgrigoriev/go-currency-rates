@@ -1,12 +1,12 @@
 package converter
 
 import (
-	"github.com/mgrigoriev/go-currency-rates/internal/cache"
+	"github.com/mgrigoriev/go-currency-rates/internal/testhelper"
 	"testing"
 )
 
 func TestConvert(t *testing.T) {
-	ratesCache := initCache(map[string]float64{"RUB": 1.0, "USD": 93.0, "EUR": 99.0})
+	ratesCache := testhelper.InitCache(map[string]float64{"RUB": 1.0, "USD": 93.0, "EUR": 99.0})
 	converter := NewConverter(ratesCache)
 
 	tests := []struct {
@@ -39,14 +39,4 @@ func TestConvert(t *testing.T) {
 			}
 		}
 	}
-}
-
-func initCache(rates map[string]float64) *cache.Cache {
-	ratesCache := cache.New()
-
-	for k, v := range rates {
-		ratesCache.Set(k, v)
-	}
-
-	return ratesCache
 }

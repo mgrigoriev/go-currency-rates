@@ -55,6 +55,6 @@ func fetchAndCacheRates(client *cbrclient.CBRClient, logger *slog.Logger) {
 }
 
 func runHTTPServer(ratesCache *cache.Cache, logger *slog.Logger) {
-	srv := handler.NewHTTPServer(constants.BindAddr, ratesCache, logger)
+	srv := handler.NewAppServer(constants.BindAddr, ratesCache, logger)
 	srv.ListenAndServe()
 }
