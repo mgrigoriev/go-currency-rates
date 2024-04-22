@@ -36,12 +36,11 @@ func (s *AppServer) convertHandler(w http.ResponseWriter, req *http.Request) {
 		"result":        strconv.FormatFloat(result, 'f', 2, 64),
 	}
 
-	jsonData, err := json.Marshal(response)
-	if err != nil {
-		http.Error(w, "Server error", http.StatusInternalServerError)
-		return
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(jsonData)
+
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		s.logger.Error(err.Error())
+		http.Error(w, "Server error", http.StatusInternalServerError)
+	}
 }

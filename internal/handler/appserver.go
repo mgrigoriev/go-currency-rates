@@ -4,7 +4,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mgrigoriev/go-currency-rates/internal/cache"
 	"github.com/mgrigoriev/go-currency-rates/internal/converter"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -37,6 +36,7 @@ func (s *AppServer) ListenAndServe() {
 	r := mux.NewRouter()
 	r.HandleFunc("/", s.indexHandler).Methods("GET")
 	r.HandleFunc("/convert/", s.convertHandler).Methods("GET")
+	r.Use(s.loggingMiddleware)
 
 	srv := &http.Server{
 		Handler:      r,
@@ -47,5 +47,20 @@ func (s *AppServer) ListenAndServe() {
 
 	s.logger.Info("Starting HTTP handler at http://" + s.bindAddr)
 
-	log.Fatal(srv.ListenAndServe())
+	err := srv.ListenAndServe()
+	if err != nil {
+		s.logger.Error(err.Error())
+	}
+}
+
+func (s *AppServer) loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s.logger.Info("incoming request",
+			"path", r.URL.Path,
+			"method", r.Method,
+			"remote_addr", r.RemoteAddr,
+		)
+
+		next.ServeHTTP(w, r)
+	})
 }

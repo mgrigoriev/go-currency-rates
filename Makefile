@@ -8,7 +8,7 @@ d:
 d-build:
 	docker build -t go-currency-rates .
 d-run:
-	 docker run -p 9999:9999 go-currency-rates
+	 docker run -p 8888:8888 go-currency-rates
 d-sh:
 	docker run -it go-currency-rates sh
 d-log:
